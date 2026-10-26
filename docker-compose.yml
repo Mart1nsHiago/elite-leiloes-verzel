@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: elite
+      POSTGRES_USER: elite
+      POSTGRES_PASSWORD: elite_local_only
+    volumes:
+      - elite_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elite -d elite"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://elite:elite_local_only@postgres:5432/elite
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-this-long-jwt-secret-for-deployment-2026}
+      AUDIT_SECRET: ${AUDIT_SECRET:-dev-only-change-this-long-audit-secret-for-deployment-2026}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-Demo@2026}
+      ENVIRONMENT: development
+      CORS_ORIGINS: http://localhost:5173
+volumes:
+  elite_pgdata:
