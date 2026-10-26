@@ -1,12 +1,16 @@
-# Elite Leilões — Teste técnico Verzel (Elite Dev)
+# Elite Leilões | Plataforma de leilões em tempo real
 
-> Casa de leilões on-line para **livros e colecionáveis**, com salas em tempo real, carteira simulada, competição de lances, liquidação e auditoria pública.
+> Plataforma full-stack desenvolvida para o desafio técnico Elite Dev da Verzel, com leilões de livros e colecionáveis, disputa em tempo real, carteira simulada, liquidação e auditoria pública.
 
 **Stack:** React 18 + Vite + TypeScript | Python + FastAPI | PostgreSQL + SQLAlchemy | WebSockets | Docker.
 
-O projeto implementa o desafio proposto no PDF *Teste técnico: Elite Dev na Verzel*. Nenhuma transação financeira real é realizada.
+**Aplicação pública:** https://elite-leiloes-verzel.onrender.com  
+**Documentação da API:** https://elite-leiloes-verzel.onrender.com/docs  
+**Repositório:** https://github.com/Mart1nsHiago/elite-leiloes-verzel
 
-## 1. Comece em 2 comandos (Docker)
+O sistema contempla os papéis de leiloeiro (responsável por publicar e gerenciar seus lotes) e licitante (responsável por depósitos simulados e lances). Nenhuma movimentação financeira real é realizada.
+
+## 1. Execução local com Docker
 
 Requisitos: **Docker** e plugin **Docker Compose** instalados.
 
@@ -55,17 +59,17 @@ Acesse **http://localhost:5173**. O servidor Vite encaminha `/api` e WebSockets 
 
 Recomenda-se Python 3.12 e Node.js 22.
 
-## 2. Contas prontas para avaliação
+## 2. Perfis e contas de demonstração
 
 Os dados são criados automaticamente quando o banco está vazio.
 
-| Papel | E-mail | Senha local | Observações |
+| Papel | E-mail | Senha no ambiente local | Permissões |
 |---|---|---|---|
 | Leiloeiro | `leiloeiro@demo.com` | `Demo@2026` | Publica, acompanha e cancela lotes sem lances |
 | Licitante 1 | `ana@demo.com` | `Demo@2026` | Carteira com saldo e um arremate encerrado |
 | Licitante 2 | `bruno@demo.com` | `Demo@2026` | Líder de um leilão ao vivo |
 
-**Importante:** a senha das contas de demonstração deve ser alterada com `DEMO_PASSWORD` ao fazer o deploy. O ambiente `ENVIRONMENT=production` **recusa inicialização** com a senha padrão e também exige segredos `JWT_SECRET` e `AUDIT_SECRET` longos.
+**Credenciais em produção:** a senha local de demonstração acima **não é utilizada no ambiente público**. A Render recebe outra senha por meio da variável privada `DEMO_PASSWORD`. As credenciais necessárias para a avaliação devem ser compartilhadas separadamente com a equipe Verzel. A inicialização em `ENVIRONMENT=production` exige a substituição da senha padrão e a configuração dos segredos `JWT_SECRET` e `AUDIT_SECRET`.
 
 Lotes iniciais:
 
@@ -76,17 +80,17 @@ Lotes iniciais:
 
 Os horários são relativos ao instante em que um banco vazio é inicializado; o estado de lotes ativos muda normalmente com o tempo.
 
-## 3. Percurso sugerido para o avaliador
+## 3. Fluxos funcionais para avaliação
 
-1. Abra a vitrine pública e filtre lotes **Ao vivo**, **Em breve** e **Encerrados**.
-2. Acesse **Dom Casmurro**, veja valor atual, cronômetro, histórico e auditoria pública.
-3. Entre como **Ana** e ofereça o valor mínimo exibido. Observe a notificação, o lance registrado e o saldo comprometido.
-4. Entre em uma segunda janela com a conta **Bruno**. Supere o lance de Ana; a carteira dela libera a reserva.
-5. Entre como **leiloeiro**, abra **Painel do leiloeiro → Novo lote**, pesquise um livro na Open Library e configure valor inicial, incremento, início e fim.
-6. Verifique que só se cancela um lote que **não recebeu nenhum lance**.
-7. Entre como Ana e acesse **Meus arremates → A Metamorfose → Comprovante**. Copie seu link e abra em uma janela anônima.
-8. Acesse a **Auditoria pública**, onde cada lance possui assinatura individual, referência ao anterior e âncora assinada do lote.
-9. Para demonstrar o *anti-sniping* sem aguardar duas horas, crie um lote com término próximo; quando faltarem até 2 minutos, um lance válido prorroga o encerramento em 2 minutos.
+1. **Vitrine:** exibe lotes ao vivo, agendados e encerrados, com filtros e pesquisa. Lotes cancelados não aparecem na vitrine.
+2. **Sala do lote:** reúne imagem, descrição, maior lance, incremento mínimo, contagem regressiva, posição na disputa e histórico.
+3. **Lances:** licitantes autenticados ofertam valores. A aplicação valida o valor mínimo, saldo disponível, período ativo e impedimento de autossuperação.
+4. **Tempo real:** sessões independentes recebem atualizações por WebSocket sem recarregar a página. O backend é a fonte de verdade para os valores apresentados.
+5. **Carteira:** o lance líder compromete o valor ofertado, que volta a ficar disponível quando outro participante o supera.
+6. **Painel do leiloeiro:** permite pesquisar livros na Open Library, criar lotes, visualizar resultados e cancelar lotes que ainda não receberam lances.
+7. **Encerramento:** o maior licitante recebe o arremate, o sistema liquida os créditos simulados e emite um comprovante compartilhável. Lotes sem lances encerram sem vencedor.
+8. **Auditoria:** disponível sem login, consulta assinaturas, ligações da cadeia e selo de integridade; os participantes são identificados por aliases, sem exposição de dados pessoais.
+9. **Prorrogação automática (*anti-sniping*):** lances aceitos nos dois minutos finais acrescentam dois minutos ao prazo de encerramento.
 
 ## 4. Regras de negócio implementadas
 
@@ -184,33 +188,32 @@ pip install -r requirements.txt
 python -m pytest -q
 ```
 
-Há **16 testes** cobrindo: autenticação, papéis, lances, incremento, autossuperação, reserva/desbloqueio de saldo, insuficiência de créditos, depósito, criação/cancelamento, *anti-sniping*, leilão encerrado, recibo público, adulteração de lance, remoção de lance, inserção de lance e liquidação única.
+A suíte contém **16 testes** cobrindo: autenticação, papéis, lances, incremento, autossuperação, reserva/desbloqueio de saldo, insuficiência de créditos, depósito, criação/cancelamento, *anti-sniping*, leilão encerrado, recibo público, adulteração de lance, remoção de lance, inserção de lance e liquidação única.
 
 A suíte isolada usa **SQLite** como banco transitório para execução rápida. As garantias de bloqueio de linhas (`SELECT FOR UPDATE`) são específicas do PostgreSQL e devem ser verificadas em um teste de integração com Postgres para validar contenção de alta concorrência.
 
-## 7. Deploy público (obrigatório no desafio)
+## 7. Infraestrutura e publicação
 
-O projeto inclui `render.yaml` para a plataforma **Render**, com:
+**Ambiente publicado:** https://elite-leiloes-verzel.onrender.com  
+**Health check:** https://elite-leiloes-verzel.onrender.com/api/health  
+**Swagger/OpenAPI:** https://elite-leiloes-verzel.onrender.com/docs
 
-- Uma aplicação Docker (FastAPI + React compilado) em um **único domínio**;
-- PostgreSQL gerenciado;
-- Health check `/api/health`;
-- Geração de `JWT_SECRET` e `AUDIT_SECRET`;
-- `DEMO_PASSWORD` solicitado na configuração do Blueprint.
+O repositório utiliza um `render.yaml` que define uma aplicação web Docker e um banco PostgreSQL gerenciado. O `Dockerfile` compila o front-end React e publica os arquivos estáticos pelo FastAPI no mesmo domínio. O banco persiste usuários, lotes, lances, transações e comprovantes.
 
-Passos:
+A configuração do ambiente é feita por variáveis, sem armazenar credenciais de produção no repositório:
 
-1. Crie um **repositório público no GitHub** e envie o conteúdo desta pasta (inclusive `render.yaml`).
-2. Na Render, abra **New → Blueprint** e selecione o repositório.
-3. Confira serviços e banco propostos. **Revise eventuais custos, limites e expiração do plano gratuito** antes de criar.
-4. Quando solicitado, configure `DEMO_PASSWORD` com uma senha forte diferente de `Demo@2026`; guarde-a para a equipe avaliadora.
-5. Aguarde a primeira implantação e teste o endereço público criado pela Render.
-6. Confirme `https://SEU-ENDERECO.onrender.com/api/health`, vitrine, cadastro, login, lances, WebSocket, auditoria e comprovante.
-7. Envie o link do repositório e a URL pública no formulário da Verzel.
+| Variável | Função |
+|---|---|
+| `DATABASE_URL` | Endereço de conexão do PostgreSQL |
+| `ENVIRONMENT` | Seleciona o modo de execução, incluindo `production` |
+| `JWT_SECRET` | Assinatura dos tokens de autenticação |
+| `AUDIT_SECRET` | Assinatura da trilha de auditoria |
+| `DEMO_PASSWORD` | Senha das contas de demonstração em produção |
+| `PYTHONUNBUFFERED` | Saída imediata dos logs do Python |
 
-**Atenção:** o deploy **não é feito automaticamente por baixar o ZIP**. Ele exige autenticação nas contas GitHub/Render. O projeto já contém os arquivos de configuração, mas a URL pública só existe após a publicação.
+O arquivo `docker-compose.yml` permite reproduzir localmente o ambiente de aplicação e banco. A configuração atual usa uma instância do aplicativo com um processo Uvicorn; o mecanismo de eventos WebSocket é em memória, portanto múltiplas réplicas exigiriam um broker externo (por exemplo, Redis pub/sub).
 
-Se preferir configurar manualmente, é possível publicar este `Dockerfile` em qualquer host capaz de executar Docker com PostgreSQL persistente. Execute **uma instância da aplicação, um processo Uvicorn**; o pub/sub dos WebSockets está em memória. Para múltiplas réplicas, use um broker externo (ex.: Redis pub/sub).
+O serviço de hospedagem pode aplicar limites de recursos ou suspensão por inatividade conforme o plano contratado.
 
 ## 8. Estrutura
 
@@ -250,6 +253,8 @@ elite-leiloes/
 - **Limitações:** não há gateways reais de pagamento, nota fiscal, restauração de senha nem suporte a múltiplas instâncias sem broker; não foram solicitados.
 - **Evoluções possíveis:** migrações com Alembic, testes end-to-end de navegador, testes simultâneos sob PostgreSQL e ancoragem imutável externa da auditoria.
 
-## 10. Declaração de uso de IA
+## 10. Uso de IA e verificações realizadas
 
-Conforme solicitado pelo formulário da Verzel, declare honestamente a assistência de IA utilizada no projeto e as partes que você efetivamente revisou e validou. Uma sugestão fiel de texto está em [`docs/USO-DE-IA.md`](docs/USO-DE-IA.md). Não declare revisões ou testes manuais que não foram realizados.
+Foi utilizada assistência de inteligência artificial para apoiar o planejamento, a implementação de componentes do front-end e do back-end e a elaboração de documentação. O projeto foi executado localmente com Docker e publicado no GitHub e na Render. Na validação manual foram exercitados login e perfis, criação de lotes, lances em contas distintas, atualização em tempo real, regras de incremento e saldo, prorrogação, encerramento, liquidação, comprovantes e auditoria pública.
+
+A trilha de auditoria utiliza HMAC-SHA256 e as verificações automatizadas incluem casos de adulteração. O relatório dos testes automatizados encontra-se em `docs/RESULTADO-TESTES.txt`; o escopo desses testes não substitui testes de carga e de concorrência em larga escala no PostgreSQL. A descrição complementar do uso de IA está em [`docs/USO-DE-IA.md`](docs/USO-DE-IA.md).
